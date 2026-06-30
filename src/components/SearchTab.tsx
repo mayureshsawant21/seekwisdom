@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { DilemmaResult, QuickTheme } from "../types";
-import { QUICK_THEMES } from "../precompiledData";
+import { QUICK_THEMES, PRECOMPILED_DILEMMAS } from "../precompiledData";
 import { Search, Compass, BookOpen, Clock, Heart, ChevronRight, HelpCircle, ArrowRight } from "lucide-react";
 
 interface SearchTabProps {
@@ -57,14 +57,54 @@ export default function SearchTab({ onPlayChime }: SearchTabProps) {
     setQuery(searchQuery);
     
     try {
-      const response = await fetch("/api/spiritual-insight", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: searchQuery }),
-      });
-      const data = await response.json();
-      if (data.result) {
-        setResult(data.result);
+      let resultData: DilemmaResult | null = null;
+      try {
+        const response = await fetch("/api/spiritual-insight", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: searchQuery }),
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.result) {
+            resultData = data.result;
+          }
+        }
+      } catch (e) {
+        console.warn("API offline, falling back to local precompiled wisdom matching:", e);
+      }
+
+      // If the API failed to yield a result, use high-fidelity precompiled data
+      if (!resultData) {
+        const lower = searchQuery.toLowerCase();
+        let matchedKey = "failure"; // default key
+        
+        if (lower.includes("burnout") || lower.includes("stress") || lower.includes("work") || lower.includes("exhaus") || lower.includes("tir")) {
+          matchedKey = "burnout";
+        } else if (lower.includes("ethic") || lower.includes("unethic") || lower.includes("integrity") || lower.includes("cheat") || lower.includes("lie") || lower.includes("dishonest")) {
+          matchedKey = "unethical";
+        } else if (lower.includes("forgiv") || lower.includes("trust") || lower.includes("angry") || lower.includes("resent") || lower.includes("grudg")) {
+          matchedKey = "forgiveness";
+        } else if (lower.includes("fail") || lower.includes("setback") || lower.includes("career") || lower.includes("disappoint")) {
+          matchedKey = "failure";
+        } else {
+          // Pick a random one from the precompiled ones to keep the experience interesting!
+          const keys = ["failure", "burnout", "unethical", "forgiveness"];
+          const randomKey = keys[Math.floor(Math.random() * keys.length)];
+          matchedKey = randomKey;
+        }
+
+        const matchedDilemma = PRECOMPILED_DILEMMAS[matchedKey];
+        if (matchedDilemma) {
+          resultData = {
+            ...matchedDilemma,
+            query: searchQuery // Preserve user's actual typed query
+          };
+        }
+      }
+
+      if (resultData) {
+        setResult(resultData);
         onPlayChime(); // Play peaceful Tibetan singing bowl on load completion!
         
         // Save to search history

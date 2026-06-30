@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { DailyReflection } from "../types";
+import { DAILY_REFLECTIONS } from "../precompiledData";
 import { Sparkles, MessageSquare, Save, Trash2, Check, BookOpen } from "lucide-react";
 
 interface ReflectionsTabProps {
@@ -50,21 +51,55 @@ export default function ReflectionsTab({ onPlayChime }: ReflectionsTabProps) {
     setLoading(true);
     setSelectedEmotion(emotion);
     setJournalText("");
+    
+    let resultReflection: DailyReflection | null = null;
     try {
       const response = await fetch("/api/daily-reflection", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ emotion }),
       });
-      const data = await response.json();
-      if (data.reflection) {
-        setReflection(data.reflection);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.reflection) {
+          resultReflection = data.reflection;
+        }
       }
     } catch (e) {
-      console.error("Error loading reflection:", e);
-    } finally {
-      setLoading(false);
+      console.warn("API unavailable, falling back to local daily reflections:", e);
     }
+
+    if (!resultReflection) {
+      // Map chosen emotion to best fitting theme
+      let targetThemes: string[] = [];
+      const lower = emotion.toLowerCase();
+      
+      if (lower === "impatient") {
+        targetThemes = ["Patience", "Equanimity"];
+      } else if (lower === "anxious" || lower === "overwhelmed" || lower === "fearful") {
+        targetThemes = ["Peace", "Mindfulness", "Equanimity"];
+      } else if (lower === "angry") {
+        targetThemes = ["Humility", "Patience"];
+      } else if (lower === "grateful") {
+        targetThemes = ["Love & Charity", "Peace"];
+      } else if (lower === "grieving" || lower === "confused") {
+        targetThemes = ["Mindfulness", "Equanimity", "Peace"];
+      }
+
+      let matches = DAILY_REFLECTIONS.filter((r) => targetThemes.includes(r.theme));
+      if (matches.length === 0) {
+        matches = [...DAILY_REFLECTIONS];
+      }
+      
+      // Select a random matching reflection
+      const randomSel = matches[Math.floor(Math.random() * matches.length)];
+      resultReflection = randomSel ? { ...randomSel } : null;
+    }
+
+    if (resultReflection) {
+      setReflection(resultReflection);
+    }
+    setLoading(false);
   };
 
   const handleSaveJournal = () => {
