@@ -1,0 +1,6 @@
+{
+  "name": "Universal Spiritual Search",
+  "description": "A minimalist spiritual search engine that provides comparative, nuanced insights from the Bhagavad Gita, Holy Bible, Noble Quran, and Buddhism, featuring daily reflections and a breathing meditation guide.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
